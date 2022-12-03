@@ -565,8 +565,8 @@ class Chess {
     manualMove(from, to) {
         const piece = this.get(from);
         const toPiece = this.get(to);
-        this._board[Ox88[to]] = piece;
         delete this._board[Ox88[from]];
+        this._board[Ox88[to]] = piece;
         if (toPiece && toPiece.type === exports.KING) {
             this._kings[toPiece.color] = EMPTY;
         }
