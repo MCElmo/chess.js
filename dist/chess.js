@@ -562,6 +562,16 @@ class Chess {
         this._updateSetup(this.fen());
         return true;
     }
+    manualMove(from, to) {
+        const piece = this.get(from);
+        const toPiece = this.get(to);
+        this._board[Ox88[to]] = piece;
+        delete this._board[Ox88[from]];
+        if (toPiece && toPiece.type === exports.KING) {
+            this._kings[toPiece.color] = EMPTY;
+        }
+        this._updateSetup(this.fen());
+    }
     remove(square) {
         const piece = this.get(square);
         delete this._board[Ox88[square]];
@@ -927,6 +937,19 @@ class Chess {
     _makeMove(move) {
         const us = this._turn;
         const them = swapColor(us);
+        if (move.captured) {
+            if (move.flags & BITS.EP_CAPTURE) {
+                if (this._turn === exports.BLACK) {
+                    move.capturedId = this._board[move.to - 16].id;
+                }
+                else {
+                    move.capturedId = this._board[move.to + 16].id;
+                }
+            }
+            else {
+                move.capturedId = this._board[move.to].id;
+            }
+        }
         this._push(move);
         this._board[move.to] = this._board[move.from];
         delete this._board[move.from];
@@ -1040,11 +1063,11 @@ class Chess {
                 else {
                     index = move.to + 16;
                 }
-                this._board[index] = { type: exports.PAWN, color: them, id: (0, nanoid_1.nanoid)() };
+                this._board[index] = { type: exports.PAWN, color: them, id: move.capturedId };
             }
             else {
                 // regular capture
-                this._board[move.to] = { type: move.captured, color: them, id: (0, nanoid_1.nanoid)() };
+                this._board[move.to] = { type: move.captured, color: them, id: move.capturedId };
             }
         }
         if (move.flags & (BITS.KSIDE_CASTLE | BITS.QSIDE_CASTLE)) {

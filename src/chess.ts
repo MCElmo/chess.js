@@ -65,6 +65,7 @@ type InternalMove = {
   to: number
   piece: PieceSymbol
   captured?: PieceSymbol
+  capturedId?: string
   promotion?: PieceSymbol
   flags: number
 }
@@ -707,6 +708,20 @@ export class Chess {
     return true
   }
 
+  manualMove(from: Square, to: Square) {
+    const piece = this.get(from)
+    const toPiece = this.get(to);
+
+    this._board[Ox88[to]] = piece;
+    delete this._board[Ox88[from]];
+
+    if (toPiece && toPiece.type === KING) {
+      this._kings[toPiece.color] = EMPTY
+    }
+
+    this._updateSetup(this.fen())
+  }
+
   remove(square: Square) {
     const piece = this.get(square)
     delete this._board[Ox88[square]]
@@ -1171,6 +1186,18 @@ export class Chess {
   private _makeMove(move: InternalMove) {
     const us = this._turn
     const them = swapColor(us)
+
+    if (move.captured) {
+      if (move.flags & BITS.EP_CAPTURE) {
+        if (this._turn === BLACK) {
+          move.capturedId = this._board[move.to - 16].id;
+        } else {
+          move.capturedId = this._board[move.to + 16].id;
+        }
+      } else {
+        move.capturedId = this._board[move.to].id;
+      }
+    }
     this._push(move)
 
     this._board[move.to] = this._board[move.from]
@@ -1300,10 +1327,10 @@ export class Chess {
         } else {
           index = move.to + 16
         }
-        this._board[index] = { type: PAWN, color: them, id: nanoid()}
+        this._board[index] = { type: PAWN, color: them, id: move.capturedId!}
       } else {
         // regular capture
-        this._board[move.to] = { type: move.captured, color: them, id: nanoid()}
+        this._board[move.to] = { type: move.captured, color: them, id: move.capturedId!}
       }
     }
 

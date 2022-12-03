@@ -21,6 +21,7 @@ declare type InternalMove = {
     to: number;
     piece: PieceSymbol;
     captured?: PieceSymbol;
+    capturedId?: string;
     promotion?: PieceSymbol;
     flags: number;
 };
@@ -63,6 +64,7 @@ export declare class Chess {
         color: Color;
         id?: string;
     }, square: Square): boolean;
+    manualMove(from: Square, to: Square): void;
     remove(square: Square): Piece;
     _attacked(color: Color, square: number): boolean;
     private _isKingAttacked;
