@@ -1946,6 +1946,10 @@ export class Chess {
     return this._turn
   }
 
+  flipTurn() {
+    this._turn = swapColor(this._turn);
+  }
+
   board() {
     const output = []
     let row = []

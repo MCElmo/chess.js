@@ -109,6 +109,7 @@ export declare class Chess {
     perft(depth: number): number;
     private _makePretty;
     turn(): Color;
+    flipTurn(): void;
     board(): ({
         square: Square;
         type: PieceSymbol;
