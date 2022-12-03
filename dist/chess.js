@@ -1597,6 +1597,7 @@ class Chess {
                     square: algebraic(i),
                     type: this._board[i].type,
                     color: this._board[i].color,
+                    id: this._board[i].id,
                 });
             }
             if ((i + 1) & 0x88) {

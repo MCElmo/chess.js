@@ -113,6 +113,7 @@ export declare class Chess {
         square: Square;
         type: PieceSymbol;
         color: Color;
+        id: string;
     } | null)[][];
     squareColor(square: Square): "light" | "dark" | null;
     history({ verbose }?: {
