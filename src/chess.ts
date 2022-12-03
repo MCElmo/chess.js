@@ -1,3 +1,5 @@
+import { nanoid } from "nanoid";
+
 /*
  * Copyright (c) 2022, Jeff Hlywa (jhlywa@gmail.com)
  * All rights reserved.
@@ -53,7 +55,8 @@ export const DEFAULT_POSITION =
 
 export type Piece = {
   color: Color
-  type: PieceSymbol
+  type: PieceSymbol,
+  id: string
 }
 
 type InternalMove = {
@@ -283,57 +286,62 @@ function swapColor(color: Color): Color {
   return color === WHITE ? BLACK : WHITE
 }
 
+/* TODO: this needs a bit of work - it validates structure but completely
+ * ignores content (e.g. doesn't verify that each side has a king) ... we should
+ * rewrite this, and ditch the silly error_number field while we're at it */
 export function validateFen(fen: string) {
+  const errors = []
+  errors[0] = 'No errors.'
+  errors[1] = 'FEN string must contain six space-delimited fields.'
+  errors[2] = '6th field (move number) must be a positive integer.'
+  errors[3] = '5th field (half move counter) must be a non-negative integer.'
+  errors[4] = '4th field (en-passant square) is invalid.'
+  errors[5] = '3rd field (castling availability) is invalid.'
+  errors[6] = '2nd field (side to move) is invalid.'
+  errors[7] =
+    "1st field (piece positions) does not contain 8 '/'-delimited rows."
+  errors[8] = '1st field (piece positions) is invalid [consecutive numbers].'
+  errors[9] = '1st field (piece positions) is invalid [invalid piece].'
+  errors[10] = '1st field (piece positions) is invalid [row too large].'
+  errors[11] = 'Illegal en-passant square'
+
   /* 1st criterion: 6 space-seperated fields? */
   const tokens = fen.split(/\s+/)
   if (tokens.length !== 6) {
-    return {
-      ok: false,
-      error: 'Invalid FEN: must contain six space-delimited fields',
-    }
+    return { valid: false, errorNumber: 1, error: errors[1] }
   }
 
   /* 2nd criterion: move number field is a integer value > 0? */
   const moveNumber = parseInt(tokens[5], 10)
   if (isNaN(moveNumber) || moveNumber <= 0) {
-    return {
-      ok: false,
-      error: 'Invalid FEN: move number must be a positive integer',
-    }
+    return { valid: false, errorNumber: 2, error: errors[2] }
   }
 
   /* 3rd criterion: half move counter is an integer >= 0? */
   const halfMoves = parseInt(tokens[4], 10)
   if (isNaN(halfMoves) || halfMoves < 0) {
-    return {
-      ok: false,
-      error:
-        'Invalid FEN: half move counter number must be a non-negative integer',
-    }
+    return { valid: false, errorNumber: 3, error: errors[3] }
   }
 
   /* 4th criterion: 4th field is a valid e.p.-string? */
   if (!/^(-|[abcdefgh][36])$/.test(tokens[3])) {
-    return { ok: false, error: 'Invalid FEN: en-passant square is invalid' }
+    return { valid: false, errorNumber: 4, error: errors[4] }
   }
 
   /* 5th criterion: 3th field is a valid castle-string? */
-  if (/[^kKqQ-]/.test(tokens[2])) {
-    return { ok: false, error: 'Invalid FEN: castling availability is invalid' }
+  if (!/^(KQ?k?q?|Qk?q?|kq?|q|-)$/.test(tokens[2])) {
+    return { valid: false, errorNumber: 5, error: errors[5] }
   }
 
   /* 6th criterion: 2nd field is "w" (white) or "b" (black)? */
   if (!/^(w|b)$/.test(tokens[1])) {
-    return { ok: false, error: 'Invalid FEN: side-to-move is invalid' }
+    return { valid: false, errorNumber: 6, error: errors[6] }
   }
 
   /* 7th criterion: 1st field contains 8 rows? */
   const rows = tokens[0].split('/')
   if (rows.length !== 8) {
-    return {
-      ok: false,
-      error: "Invalid FEN: piece data does not contain 8 '/'-delimited rows",
-    }
+    return { valid: false, errorNumber: 7, error: errors[7] }
   }
 
   /* 8th criterion: every row is valid? */
@@ -345,29 +353,20 @@ export function validateFen(fen: string) {
     for (let k = 0; k < rows[i].length; k++) {
       if (isDigit(rows[i][k])) {
         if (previousWasNumber) {
-          return {
-            ok: false,
-            error: 'Invalid FEN: piece data is invalid (consecutive number)',
-          }
+          return { valid: false, errorNumber: 8, error: errors[8] }
         }
         sumFields += parseInt(rows[i][k], 10)
         previousWasNumber = true
       } else {
         if (!/^[prnbqkPRNBQK]$/.test(rows[i][k])) {
-          return {
-            ok: false,
-            error: 'Invalid FEN: piece data is invalid (invalid piece)',
-          }
+          return { valid: false, errorNumber: 9, error: errors[9] }
         }
         sumFields += 1
         previousWasNumber = false
       }
     }
     if (sumFields !== 8) {
-      return {
-        ok: false,
-        error: 'Invalid FEN: piece data is invalid (too many squares in rank)',
-      }
+      return { valid: false, errorNumber: 10, error: errors[10] }
     }
   }
 
@@ -375,7 +374,7 @@ export function validateFen(fen: string) {
     (tokens[3][1] == '3' && tokens[1] == 'w') ||
     (tokens[3][1] == '6' && tokens[1] == 'b')
   ) {
-    return { ok: false, error: 'Invalid FEN: illegal en-passant square' }
+    return { valid: false, errorNumber: 11, error: errors[11] }
   }
 
   const kings = [
@@ -383,17 +382,19 @@ export function validateFen(fen: string) {
     { color: 'black', regex: /k/g },
   ]
 
-  for (const { color, regex } of kings) {
+for (const { color, regex } of kings) {
     if (!regex.test(tokens[0])) {
-      return { ok: false, error: `Invalid FEN: missing ${color} king` }
+      return { valid: false, errorNumber:12,  error: `Invalid FEN: missing ${color} king` }
     }
 
     if ((tokens[0].match(regex) || []).length > 1) {
-      return { ok: false, error: `Invalid FEN: too many ${color} kings` }
+      return { valid: false, errorNumber:13, error: `Invalid FEN: too many ${color} kings` }
     }
-  }
+}
 
-  return { ok: true }
+
+  /* everything's okay! */
+  return { valid: true, errorNumber: 0, error: errors[0] }
 }
 
 /* this function is used to uniquely identify ambiguous moves */
@@ -479,6 +480,7 @@ function addMove(
       to,
       piece,
       captured,
+      promotion: undefined,
       flags,
     })
   }
@@ -536,23 +538,13 @@ export class Chess {
   }
 
   load(fen: string, keepHeaders = false) {
-    let tokens = fen.split(/\s+/)
-
-    // append commonly omitted fen tokens
-    if (tokens.length >= 2 && tokens.length < 6) {
-      const adjustments = ['-', '-', '0', '1']
-      fen = tokens.concat(adjustments.slice(-(6 - tokens.length))).join(' ')
-    }
-
-    tokens = fen.split(/\s+/)
-
-    const { ok, error } = validateFen(fen)
-    if (!ok) {
-      throw new Error(error)
-    }
-
+    const tokens = fen.split(/\s+/)
     const position = tokens[0]
     let square = 0
+
+    if (!validateFen(fen).valid) {
+      return false
+    }
 
     this.clear(keepHeaders)
 
@@ -593,6 +585,8 @@ export class Chess {
     this._moveNumber = parseInt(tokens[5], 10)
 
     this._updateSetup(this.fen())
+
+    return true
   }
 
   fen() {
@@ -680,7 +674,7 @@ export class Chess {
     return this._board[Ox88[square]] || false
   }
 
-  put({ type, color }: { type: PieceSymbol; color: Color }, square: Square) {
+  put({ type, color, id }: { type: PieceSymbol; color: Color, id?: string }, square: Square) {
     /* check for piece */
     if (SYMBOLS.indexOf(type.toLowerCase()) === -1) {
       return false
@@ -700,8 +694,9 @@ export class Chess {
     ) {
       return false
     }
+    
 
-    this._board[sq] = { type: type as PieceSymbol, color: color as Color }
+    this._board[sq] = { type: type as PieceSymbol, color: color as Color, id: id ?? nanoid()}
 
     if (type === KING) {
       this._kings[color] = sq
@@ -1192,7 +1187,7 @@ export class Chess {
 
     /* if pawn promotion, replace with new piece */
     if (move.promotion) {
-      this._board[move.to] = { type: move.promotion, color: us }
+      this._board[move.to] = { type: move.promotion, color: us, id: nanoid()}
     }
 
     /* if we moved the king */
@@ -1305,10 +1300,10 @@ export class Chess {
         } else {
           index = move.to + 16
         }
-        this._board[index] = { type: PAWN, color: them }
+        this._board[index] = { type: PAWN, color: them, id: nanoid()}
       } else {
         // regular capture
-        this._board[move.to] = { type: move.captured, color: them }
+        this._board[move.to] = { type: move.captured, color: them, id: nanoid()}
       }
     }
 
@@ -1567,19 +1562,18 @@ export class Chess {
      * the wrong case and doesn't include a corresponding [SetUp "1"] tag */
     if (sloppy) {
       if (fen) {
-        this.load(fen, true)
+        if (!this.load(fen, true)) {
+          return false
+        }
       }
     } else {
       /* strict parser - load the starting position indicated by [Setup '1']
        * and [FEN position] */
       if (headers['SetUp'] === '1') {
-        if (!('FEN' in headers)) {
-          throw new Error(
-            'Invalid PGN: FEN tag must be supplied with SetUp tag'
-          )
+        if (!('FEN' in headers && this.load(headers['FEN'], true))) {
+          // second argument to load: don't clear the headers
+          return false
         }
-        // second argument to load: don't clear the headers
-        this.load(headers['FEN'], true)
       }
     }
 
