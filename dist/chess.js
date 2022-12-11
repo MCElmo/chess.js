@@ -467,6 +467,7 @@ class Chess {
         return true;
     }
     loadCastlingData(tokens) {
+        this._castling = { w: 0, b: 0 };
         if (tokens[2].indexOf('K') > -1) {
             if (this._kings['w'] != -1) {
                 if (this._kings['w'] === Ox88.e1) {
