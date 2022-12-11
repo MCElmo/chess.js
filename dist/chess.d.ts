@@ -54,7 +54,9 @@ export declare class Chess {
     private _castling;
     constructor(fen?: string);
     clear(keepHeaders?: boolean): void;
+    loadFenData(fen: string): boolean;
     load(fen: string, keepHeaders?: boolean): boolean;
+    private loadCastlingData;
     fen(): string;
     private _updateSetup;
     reset(): void;

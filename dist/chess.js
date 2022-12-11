@@ -104,6 +104,7 @@ const BITS = {
 //    array comes in. It provides an offset (in this case 16) to add to E7 (20)
 //    to check for blocking pieces. E7 (20) + 16 = E6 (36) + 16 = E5 (52) etc.
 // prettier-ignore
+// eslint-disable-next-line @typescript-eslint/naming-convention
 const Ox88 = {
     a8: 0, b8: 1, c8: 2, d8: 3, e8: 4, f8: 5, g8: 6, h8: 7,
     a7: 16, b7: 17, c7: 18, d7: 19, e7: 20, f7: 21, g7: 22, h7: 23,
@@ -425,6 +426,16 @@ class Chess {
         this._header = keepHeaders ? this._header : {};
         this._updateSetup(this.fen());
     }
+    loadFenData(fen) {
+        const tokens = fen.split(/\s+/);
+        this._turn = tokens[1];
+        this.loadCastlingData(tokens);
+        this._epSquare = tokens[3] === '-' ? EMPTY : Ox88[tokens[3]];
+        this._halfMoves = parseInt(tokens[4], 10);
+        this._moveNumber = parseInt(tokens[5], 10);
+        this._updateSetup(this.fen());
+        return true;
+    }
     load(fen, keepHeaders = false) {
         const tokens = fen.split(/\s+/);
         const position = tokens[0];
@@ -448,23 +459,86 @@ class Chess {
             }
         }
         this._turn = tokens[1];
-        if (tokens[2].indexOf('K') > -1) {
-            this._castling.w |= BITS.KSIDE_CASTLE;
-        }
-        if (tokens[2].indexOf('Q') > -1) {
-            this._castling.w |= BITS.QSIDE_CASTLE;
-        }
-        if (tokens[2].indexOf('k') > -1) {
-            this._castling.b |= BITS.KSIDE_CASTLE;
-        }
-        if (tokens[2].indexOf('q') > -1) {
-            this._castling.b |= BITS.QSIDE_CASTLE;
-        }
+        this.loadCastlingData(tokens);
         this._epSquare = tokens[3] === '-' ? EMPTY : Ox88[tokens[3]];
         this._halfMoves = parseInt(tokens[4], 10);
         this._moveNumber = parseInt(tokens[5], 10);
         this._updateSetup(this.fen());
         return true;
+    }
+    loadCastlingData(tokens) {
+        if (tokens[2].indexOf('K') > -1) {
+            if (this._kings['w'] != -1) {
+                if (this._kings['w'] === Ox88.e1) {
+                    if (this._board[Ox88.h1] && this._board[Ox88.h1].type === "r" && this._board[Ox88.h1].color === "w") {
+                        this._castling.w |= BITS.KSIDE_CASTLE;
+                    }
+                    else {
+                        console.log("Invalid rook for king side castle");
+                    }
+                }
+                else {
+                    console.log("King on wrong position to castle");
+                }
+            }
+            else {
+                console.log("Can't castle without white king");
+            }
+        }
+        if (tokens[2].indexOf('Q') > -1) {
+            if (this._kings['w'] != -1) {
+                if (this._kings['w'] === Ox88.e1) {
+                    if (this._board[Ox88.a1] && this._board[Ox88.a1].type === "r" && this._board[Ox88.a1].color === "w") {
+                        this._castling.w |= BITS.QSIDE_CASTLE;
+                    }
+                    else {
+                        console.log("Invalid rook for queen side castle");
+                    }
+                }
+                else {
+                    console.log("King on wrong position to q castle");
+                }
+            }
+            else {
+                console.log("Can't q castle without white king");
+            }
+        }
+        if (tokens[2].indexOf('k') > -1) {
+            if (this._kings['b'] != -1) {
+                if (this._kings['b'] === Ox88.e8) {
+                    if (this._board[Ox88.h8] && this._board[Ox88.h8].type === "r" && this._board[Ox88.h8].color === "b") {
+                        this._castling.b |= BITS.KSIDE_CASTLE;
+                    }
+                    else {
+                        console.log("Invalid b rook for king side castle");
+                    }
+                }
+                else {
+                    console.log("b King on wrong position to castle");
+                }
+            }
+            else {
+                console.log("Can't castle without black king");
+            }
+        }
+        if (tokens[2].indexOf('q') > -1) {
+            if (this._kings['b'] != -1) {
+                if (this._kings['b'] === Ox88.e8) {
+                    if (this._board[Ox88.a8] && this._board[Ox88.a8].type === "r" && this._board[Ox88.a8].color === "b") {
+                        this._castling.b |= BITS.QSIDE_CASTLE;
+                    }
+                    else {
+                        console.log("Invalid b rook for queen side castle");
+                    }
+                }
+                else {
+                    console.log("b King on wrong position to q castle");
+                }
+            }
+            else {
+                console.log("Can't q castle without black king");
+            }
+        }
     }
     fen() {
         let empty = 0;
