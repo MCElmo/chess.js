@@ -1685,6 +1685,7 @@ class Chess {
     }
     flipTurn() {
         this._turn = swapColor(this._turn);
+        this._epSquare = EMPTY;
     }
     board() {
         const output = [];
