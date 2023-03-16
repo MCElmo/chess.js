@@ -809,8 +809,7 @@ class Chess {
     isDraw() {
         return (this._halfMoves >= 100 || // 50 moves per side = 100 half moves
             this.isStalemate() ||
-            this.isInsufficientMaterial() ||
-            this.isThreefoldRepetition());
+            this.isInsufficientMaterial());
     }
     isGameOver() {
         return this.isCheckmate() || this.isStalemate() || this.isDraw();
